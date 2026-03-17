@@ -1133,10 +1133,14 @@ function defaultFrom() {
   return d.toISOString().slice(0, 10);
 }
 
+function defaultTo() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 function readFiltersFromURL() {
   const params = new URLSearchParams(window.location.search);
   state.from        = params.get('from')        || defaultFrom();
-  state.to          = params.get('to')          || '';
+  state.to          = params.get('to')          || defaultTo();
   state.domain      = params.get('domain')      || '';
   state.dmarcFilter = params.get('dmarc')       || '';
   state.disposition = params.get('disposition') || '';
