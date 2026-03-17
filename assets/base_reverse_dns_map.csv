@@ -1,0 +1,49 @@
+base_reverse_dns,name,type
+google.com,Google,esp
+googlemail.com,Google,esp
+gmail.com,Google,esp
+pphosted.com,Proofpoint,esp
+amazonaws.com,Amazon SES,esp
+amazonses.com,Amazon SES,esp
+sendgrid.net,SendGrid,esp
+mailchimp.com,Mailchimp,esp
+mandrillapp.com,Mandrill,esp
+sparkpostmail.com,SparkPost,esp
+sp.pmail.net,SparkPost,esp
+mailgun.org,Mailgun,esp
+mailgun.net,Mailgun,esp
+postmarkapp.com,Postmark,esp
+mimecast.com,Mimecast,esp
+protection.outlook.com,Microsoft,esp
+microsoft.com,Microsoft,esp
+hotmail.com,Microsoft,esp
+outlook.com,Microsoft,esp
+brevo.com,Brevo,esp
+sendinblue.com,Brevo,esp
+sender-sib.com,Brevo,esp
+smtp-brevo.com,Brevo,esp
+klaviyo.com,Klaviyo,esp
+klaviyomail.com,Klaviyo,esp
+constantcontact.com,Constant Contact,esp
+icontact.com,iContact,esp
+sailthru.com,Sailthru,esp
+exacttarget.com,Salesforce Marketing Cloud,esp
+salesforceiq.com,Salesforce,esp
+sfmc.net,Salesforce Marketing Cloud,esp
+hubspot.com,HubSpot,esp
+hs-mail.com,HubSpot,esp
+mailjet.com,Mailjet,esp
+crit.jp,CriticalSend,esp
+mxs.au,MXS,esp
+yahoodns.net,Yahoo,isp
+yahoo.com,Yahoo,isp
+comcast.net,Comcast,isp
+verizon.net,Verizon,isp
+att.net,AT&T,isp
+cox.net,Cox,isp
+charter.net,Spectrum,isp
+rr.com,Spectrum,isp
+cloudflare.com,Cloudflare,cdn
+fastly.net,Fastly,cdn
+akamai.net,Akamai,cdn
+akamaitech.net,Akamai,cdn

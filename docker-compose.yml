@@ -1,0 +1,13 @@
+services:
+  dmarcer:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/data
+    # Example values - replace with real credentials or use: env_file: [.env]
+    environment:
+      DMARCER_IMAP_HOST: mail.example.com
+      DMARCER_IMAP_USER: dmarc@example.com
+      DMARCER_IMAP_PASSWORD: secret
+    restart: unless-stopped

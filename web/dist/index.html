@@ -1,0 +1,2006 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>dmarcer - DMARC Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #1a1a2e;
+      --card:      #16213e;
+      --accent:    #0f3460;
+      --blue:      #4a9eff;
+      --success:   #00b894;
+      --danger:    #d63031;
+      --warn:      #fdcb6e;
+      --text:      #e0e0e0;
+      --muted:     #8892a4;
+      --border:    #2a3550;
+      --nav-h:     56px;
+      --sidebar-w: 220px;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* ── Navbar ── */
+    .navbar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: var(--nav-h);
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      z-index: 100;
+      gap: 24px;
+    }
+
+    .navbar .logo {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--blue);
+      letter-spacing: -0.3px;
+      white-space: nowrap;
+      margin-right: 8px;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 4px;
+      flex: 1;
+    }
+
+    .nav-link {
+      padding: 6px 14px;
+      border-radius: 6px;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: background 0.15s, color 0.15s;
+      white-space: nowrap;
+      border: none;
+      background: none;
+    }
+
+    .nav-link:hover { background: var(--accent); color: var(--text); }
+    .nav-link.active { background: var(--blue); color: #fff; }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .badge-offline {
+      background: var(--danger);
+      color: #fff;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 10px;
+      display: none;
+    }
+
+    /* ── Filter bar ── */
+    .filter-bar {
+      position: fixed;
+      top: var(--nav-h);
+      left: 0; right: 0;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      z-index: 90;
+    }
+
+    .filter-bar label {
+      color: var(--muted);
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+
+    .filter-bar input[type="date"],
+    .filter-bar select {
+      background: var(--accent);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: 5px 10px;
+      font-size: 0.875rem;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .filter-bar input[type="date"]:focus,
+    .filter-bar select:focus { border-color: var(--blue); }
+
+    .filter-toggles {
+      display: flex;
+      gap: 8px;
+    }
+
+    .toggle-btn {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--accent);
+      color: var(--muted);
+      transition: all 0.15s;
+    }
+
+    .toggle-btn.active-pass { border-color: var(--success); color: var(--success); background: rgba(0,184,148,0.1); }
+    .toggle-btn.active-fail { border-color: var(--danger); color: var(--danger); background: rgba(214,48,49,0.1); }
+
+    .btn-apply {
+      padding: 6px 16px;
+      background: var(--blue);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+
+    .btn-apply:hover { opacity: 0.85; }
+
+    .btn-clear {
+      padding: 6px 14px;
+      background: none;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: color 0.15s;
+    }
+
+    .btn-clear:hover { color: var(--text); }
+
+    /* ── Quick-filter chips ── */
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(74,158,255,0.12);
+      border: 1px solid rgba(74,158,255,0.35);
+      border-radius: 20px;
+      padding: 2px 10px 2px 10px;
+      font-size: 0.78rem;
+      color: var(--blue);
+      white-space: nowrap;
+    }
+    .chip-x {
+      cursor: pointer;
+      font-size: 1rem;
+      line-height: 1;
+      color: var(--blue);
+      opacity: 0.7;
+      background: none;
+      border: none;
+      padding: 0 0 0 2px;
+    }
+    .chip-x:hover { opacity: 1; }
+
+    tr.clickable:hover { background: rgba(74,158,255,0.06); cursor: pointer; }
+
+    /* ── Main layout ── */
+    .main {
+      margin-top: calc(var(--nav-h) + var(--filter-h, 50px));
+      padding: 20px;
+      max-width: 1600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    /* ── Sections ── */
+    .section { display: none; }
+    .section.active { display: block; }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+    }
+
+    .card-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    /* ── Summary cards ── */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .summary-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px 24px;
+    }
+
+    .summary-card .label {
+      font-size: 0.8rem;
+      color: var(--muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .summary-card .value {
+      font-size: 2rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .summary-card .sub {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .value.success { color: var(--success); }
+    .value.danger  { color: var(--danger); }
+    .value.blue    { color: var(--blue); }
+
+    /* ── Charts row ── */
+    .charts-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .chart-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+    }
+
+    .chart-card .chart-title {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 16px;
+      text-align: center;
+    }
+
+    .chart-wrap {
+      position: relative;
+      height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .timeline-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .timeline-card .chart-title {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .timeline-wrap {
+      position: relative;
+      height: 220px;
+    }
+
+    .granularity-select {
+      margin-left: auto;
+      background: var(--accent);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: 4px 10px;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+
+    /* ── Tables row ── */
+    .tables-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .tables-grid-4 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    /* ── Data table ── */
+    .data-table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+
+    thead th {
+      text-align: left;
+      padding: 8px 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid rgba(42, 53, 80, 0.5);
+      transition: background 0.1s;
+    }
+
+    tbody tr:hover { background: rgba(15, 52, 96, 0.3); }
+    tbody tr:last-child { border-bottom: none; }
+
+    tbody td {
+      padding: 9px 12px;
+      vertical-align: middle;
+    }
+
+    .text-right { text-align: right; }
+    .text-center { text-align: center; }
+
+    /* ── Pass/fail badge ── */
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .badge-pass { background: rgba(0,184,148,0.15); color: var(--success); }
+    .badge-fail { background: rgba(214,48,49,0.15); color: var(--danger); }
+    .badge-dup  { background: rgba(74,158,255,0.15); color: var(--blue); }
+    .badge-warn { background: rgba(253,203,110,0.15); color: var(--warn); }
+
+    /* ── Progress bar ── */
+    .progress-bar {
+      background: var(--accent);
+      border-radius: 4px;
+      height: 6px;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 4px;
+      background: var(--success);
+      transition: width 0.3s;
+    }
+
+    .progress-fill.low { background: var(--danger); }
+    .progress-fill.mid { background: var(--warn); }
+
+    /* ── Pagination ── */
+    .pagination {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .page-btn {
+      padding: 5px 12px;
+      border: 1px solid var(--border);
+      background: var(--accent);
+      color: var(--text);
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      transition: all 0.15s;
+    }
+
+    .page-btn:hover { border-color: var(--blue); color: var(--blue); }
+    .page-btn.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .page-info {
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    /* ── Upload section ── */
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: 10px;
+      padding: 48px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      margin-bottom: 20px;
+    }
+
+    .drop-zone:hover,
+    .drop-zone.drag-over {
+      border-color: var(--blue);
+      background: rgba(74,158,255,0.05);
+    }
+
+    .drop-zone .drop-icon {
+      font-size: 3rem;
+      margin-bottom: 12px;
+      color: var(--muted);
+    }
+
+    .drop-zone .drop-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .drop-zone .drop-sub {
+      color: var(--muted);
+      font-size: 0.875rem;
+    }
+
+    .btn-pick {
+      margin-top: 16px;
+      padding: 8px 20px;
+      background: var(--accent);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+
+    .btn-pick:hover { border-color: var(--blue); }
+
+    /* ── Upload results ── */
+    .upload-results { margin-top: 16px; }
+
+    /* ── SMTP TLS summary cards ── */
+    .tls-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    /* ── Loading spinner ── */
+    .spinner {
+      display: inline-block;
+      width: 20px; height: 20px;
+      border: 2px solid var(--border);
+      border-top-color: var(--blue);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: var(--muted);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: var(--muted);
+    }
+
+    /* ── Forensic detail modal ── */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-backdrop.hidden { display: none; }
+
+    .modal {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      width: 100%;
+      max-width: 720px;
+      max-height: 80vh;
+      overflow-y: auto;
+      padding: 28px;
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .modal-header h2 { font-size: 1.1rem; font-weight: 600; }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 1.4rem;
+      cursor: pointer;
+      line-height: 1;
+      padding: 4px;
+    }
+
+    .modal-close:hover { color: var(--text); }
+
+    .modal-body { font-size: 0.875rem; }
+
+    .detail-row {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      gap: 8px 16px;
+      margin-bottom: 8px;
+    }
+
+    .detail-label {
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .email-sample {
+      background: var(--accent);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.8rem;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 300px;
+      overflow-y: auto;
+      margin-top: 12px;
+    }
+
+    /* ── Section header ── */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .section-header h2 {
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+
+    /* ── Notification toast ── */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 300;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .toast {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 0.875rem;
+      min-width: 250px;
+      max-width: 400px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      animation: slide-in 0.3s ease;
+    }
+
+    .toast.success { border-left: 3px solid var(--success); }
+    .toast.error   { border-left: 3px solid var(--danger); }
+    .toast.info    { border-left: 3px solid var(--blue); }
+
+    @keyframes slide-in {
+      from { transform: translateX(40px); opacity: 0; }
+      to   { transform: translateX(0); opacity: 1; }
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+      .charts-row { grid-template-columns: 1fr; }
+      .tables-grid { grid-template-columns: 1fr; }
+      .tables-grid-4 { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 640px) {
+      .summary-grid { grid-template-columns: repeat(2, 1fr); }
+      .navbar { gap: 12px; }
+      .nav-link { padding: 5px 10px; font-size: 0.8rem; }
+    }
+
+    /* Disposition colours */
+    .disp-none        { color: var(--success); }
+    .disp-quarantine  { color: var(--warn); }
+    .disp-reject      { color: var(--danger); }
+
+    /* Source type chip */
+    .type-chip {
+      display: inline-block;
+      padding: 1px 7px;
+      border-radius: 8px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .type-esp { background: rgba(74,158,255,0.15); color: var(--blue); }
+    .type-isp { background: rgba(253,203,110,0.15); color: var(--warn); }
+    .type-cdn { background: rgba(0,184,148,0.15); color: var(--success); }
+    .type-other { background: rgba(136,146,164,0.15); color: var(--muted); }
+
+    /* Flag emoji */
+    .flag { font-size: 1.1em; }
+  </style>
+</head>
+<body>
+
+<!-- ── Navbar ── -->
+<nav class="navbar">
+  <span class="logo">dmarcer</span>
+  <div class="nav-links">
+    <button class="nav-link active" data-section="dashboard">Dashboard</button>
+    <button class="nav-link" data-section="forensic">Forensic</button>
+    <button class="nav-link" data-section="smtp-tls">SMTP TLS</button>
+    <button class="nav-link" data-section="upload">Upload</button>
+    <button class="nav-link" data-section="log">Log</button>
+  </div>
+  <div class="nav-right">
+    <span class="badge-offline" id="offlineBadge">OFFLINE</span>
+  </div>
+</nav>
+
+<!-- ── Filter bar ── -->
+<div class="filter-bar" id="filterBar">
+  <label>From</label>
+  <input type="date" id="filterFrom" title="Start date">
+  <label>To</label>
+  <input type="date" id="filterTo" title="End date">
+
+  <label>Domain</label>
+  <select id="filterDomain">
+    <option value="">All domains</option>
+  </select>
+
+  <label>DMARC</label>
+  <div class="filter-toggles">
+    <button class="toggle-btn" id="toggleDmarcPass" data-val="pass">Pass</button>
+    <button class="toggle-btn" id="toggleDmarcFail" data-val="fail">Fail</button>
+  </div>
+
+  <label>Disposition</label>
+  <select id="filterDisposition">
+    <option value="">All</option>
+    <option value="none">None</option>
+    <option value="quarantine">Quarantine</option>
+    <option value="reject">Reject</option>
+  </select>
+
+  <button class="btn-apply" id="btnApply">Apply</button>
+  <button class="btn-clear" id="btnClear">Clear</button>
+  <div id="quickFilterChips" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-left:4px"></div>
+</div>
+
+<!-- ── Main content ── -->
+<main class="main">
+
+  <!-- Dashboard section -->
+  <section class="section active" id="section-dashboard">
+
+    <!-- Summary cards -->
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="label">Total Messages</div>
+        <div class="value blue" id="stat-total">-</div>
+        <div class="sub">in selected period</div>
+      </div>
+      <div class="summary-card">
+        <div class="label">DMARC Pass Rate</div>
+        <div class="value" id="stat-dmarc-rate">-</div>
+        <div class="sub" id="stat-dmarc-abs">- passed</div>
+      </div>
+      <div class="summary-card">
+        <div class="label">SPF Aligned</div>
+        <div class="value" id="stat-spf-rate">-</div>
+        <div class="sub" id="stat-spf-abs">- messages</div>
+      </div>
+      <div class="summary-card">
+        <div class="label">DKIM Aligned</div>
+        <div class="value" id="stat-dkim-rate">-</div>
+        <div class="sub" id="stat-dkim-abs">- messages</div>
+      </div>
+    </div>
+
+    <!-- Doughnut charts -->
+    <div class="charts-row">
+      <div class="chart-card">
+        <div class="chart-title">DMARC Result</div>
+        <div class="chart-wrap"><canvas id="chartDmarc"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">SPF Alignment</div>
+        <div class="chart-wrap"><canvas id="chartSpf"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">DKIM Alignment</div>
+        <div class="chart-wrap"><canvas id="chartDkim"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Timeline -->
+    <div class="timeline-card">
+      <div class="chart-title">
+        Message Timeline
+        <select class="granularity-select" id="granularitySelect">
+          <option value="day">Daily</option>
+          <option value="week">Weekly</option>
+          <option value="month">Monthly</option>
+        </select>
+      </div>
+      <div class="timeline-wrap"><canvas id="chartTimeline"></canvas></div>
+    </div>
+
+    <!-- Tables -->
+    <div class="tables-grid">
+      <!-- Top sources -->
+      <div class="card">
+        <div class="card-title">Top Message Sources</div>
+        <div class="data-table-wrap">
+          <table id="tblSources">
+            <thead>
+              <tr>
+                <th>IP Address</th>
+                <th>Reverse DNS</th>
+                <th>Country</th>
+                <th>Name</th>
+                <th class="text-right">Messages</th>
+                <th class="text-right">Pass %</th>
+              </tr>
+            </thead>
+            <tbody id="tbodySources"><tr><td colspan="6" class="loading"><span class="spinner"></span>Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Reporting orgs -->
+      <div class="card">
+        <div class="card-title">Reporting Organisations</div>
+        <div class="data-table-wrap">
+          <table id="tblOrgs">
+            <thead>
+              <tr>
+                <th>Organisation</th>
+                <th class="text-right">Messages</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyOrgs"><tr><td colspan="2" class="loading"><span class="spinner"></span>Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="tables-grid-4">
+      <!-- Countries -->
+      <div class="card">
+        <div class="card-title">Source Countries</div>
+        <div class="data-table-wrap">
+          <table id="tblCountries">
+            <thead>
+              <tr>
+                <th>Country</th>
+                <th class="text-right">Messages</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyCountries"><tr><td colspan="2" class="loading"><span class="spinner"></span>Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Senders -->
+      <div class="card">
+        <div class="card-title">Top Senders</div>
+        <div class="data-table-wrap">
+          <table id="tblSenders">
+            <thead>
+              <tr>
+                <th>Sender</th>
+                <th>Type</th>
+                <th class="text-right">Messages</th>
+                <th class="text-right">Pass %</th>
+              </tr>
+            </thead>
+            <tbody id="tbodySenders"><tr><td colspan="4" class="loading"><span class="spinner"></span>Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- Forensic section -->
+  <section class="section" id="section-forensic">
+    <div class="section-header">
+      <h2>Forensic Reports</h2>
+      <span id="forensicTotal" class="page-info"></span>
+    </div>
+
+    <div class="card">
+      <div class="data-table-wrap">
+        <table id="tblForensic">
+          <thead>
+            <tr>
+              <th>Date (UTC)</th>
+              <th>Domain</th>
+              <th>Source IP</th>
+              <th>Country</th>
+              <th>Result</th>
+              <th>Subject</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tbodyForensic"><tr><td colspan="7" class="loading"><span class="spinner"></span>Loading…</td></tr></tbody>
+        </table>
+      </div>
+      <div class="pagination" id="forensicPagination"></div>
+    </div>
+  </section>
+
+  <!-- SMTP TLS section -->
+  <section class="section" id="section-smtp-tls">
+    <div class="section-header">
+      <h2>SMTP TLS Reports</h2>
+    </div>
+
+    <div class="tls-summary-grid" id="tlsSummaryGrid">
+      <div class="summary-card">
+        <div class="label">Successful Sessions</div>
+        <div class="value success" id="tls-success">-</div>
+      </div>
+      <div class="summary-card">
+        <div class="label">Failed Sessions</div>
+        <div class="value danger" id="tls-failed">-</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Policy Records</div>
+      <div class="data-table-wrap">
+        <table id="tblSmtpTls">
+          <thead>
+            <tr>
+              <th>Organisation</th>
+              <th>Report ID</th>
+              <th>Period</th>
+              <th>Domain</th>
+              <th>Policy Type</th>
+              <th class="text-right">Success</th>
+              <th class="text-right">Failed</th>
+            </tr>
+          </thead>
+          <tbody id="tbodySmtpTls"><tr><td colspan="7" class="loading"><span class="spinner"></span>Loading…</td></tr></tbody>
+        </table>
+      </div>
+      <div class="pagination" id="smtpTlsPagination"></div>
+    </div>
+  </section>
+
+  <!-- Upload section -->
+  <section class="section" id="section-upload">
+    <div class="section-header">
+      <h2>Upload Reports</h2>
+    </div>
+
+    <div class="drop-zone" id="dropZone">
+      <div class="drop-icon">&#8679;</div>
+      <div class="drop-title">Drop report files here</div>
+      <div class="drop-sub">Supports .xml, .xml.gz, .zip, .json, .eml - max 25 MB each</div>
+      <button class="btn-pick" id="btnPickFile">Browse files</button>
+      <input type="file" id="fileInput" multiple accept=".xml,.gz,.zip,.json,.eml,.txt" style="display:none">
+    </div>
+
+    <div class="upload-results" id="uploadResults">
+      <div class="card" id="uploadResultsCard" style="display:none">
+        <div class="card-title">Upload Results</div>
+        <div class="data-table-wrap">
+          <table id="tblUpload">
+            <thead>
+              <tr>
+                <th>Filename</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th class="text-right">Saved</th>
+                <th>Message</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyUpload"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Ingest log section -->
+  <section class="section" id="section-log">
+    <div class="section-header">
+      <h2>Ingest Log</h2>
+      <span id="logTotal" class="page-info"></span>
+    </div>
+
+    <div class="card">
+      <div class="data-table-wrap">
+        <table id="tblLog">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Source</th>
+              <th>Type</th>
+              <th>Filename</th>
+              <th>Status</th>
+              <th class="text-right">Saved</th>
+              <th class="text-right">Dups</th>
+              <th>Message</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyLog"><tr><td colspan="8" class="loading"><span class="spinner"></span>Loading…</td></tr></tbody>
+        </table>
+      </div>
+      <div class="pagination" id="logPagination"></div>
+    </div>
+  </section>
+
+</main>
+
+<!-- Forensic detail modal -->
+<div class="modal-backdrop hidden" id="forensicModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Forensic Report Detail</h2>
+      <button class="modal-close" id="modalClose">&times;</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+'use strict';
+
+// ── Constants & state ──────────────────────────────────────────────────────
+
+const API = {
+  health:       '/api/health',
+  summary:      '/api/stats/summary',
+  timeline:     '/api/stats/timeline',
+  topSources:   '/api/stats/top-sources',
+  countries:    '/api/stats/countries',
+  orgs:         '/api/stats/orgs',
+  senders:      '/api/stats/senders',
+  smtpTlsSummary: '/api/stats/smtp-tls-summary',
+  domains:      '/api/stats/domains',
+  aggregate:    '/api/aggregate',
+  forensic:     '/api/forensic',
+  smtpTls:      '/api/smtp-tls',
+  ingestLog:    '/api/ingest-log',
+  upload:       '/api/upload',
+};
+
+const state = {
+  from: '',
+  to: '',
+  domain: '',
+  dmarcFilter: '', // 'pass' | 'fail' | ''
+  disposition: '',
+  activeSection: 'dashboard',
+  granularity: 'day',
+  forensicPage: 1,
+  smtpTlsPage: 1,
+  logPage: 1,
+  perPage: 25,
+  // Quick-click filters
+  sourceIP: '',
+  orgName: '',
+  sourceName: '',
+  sourceBaseDomain: '',
+};
+
+// Chart instances
+let chartDmarc = null, chartSpf = null, chartDkim = null, chartTimeline = null;
+
+// ── Auth helpers ───────────────────────────────────────────────────────────
+
+function getApiKey() {
+  return sessionStorage.getItem('dmarcer_api_key') || '';
+}
+
+function authHeaders() {
+  const key = getApiKey();
+  if (key) return { 'Authorization': 'Bearer ' + key };
+  return {};
+}
+
+async function apiFetch(url, opts = {}) {
+  opts.headers = Object.assign({}, authHeaders(), opts.headers || {});
+  const res = await fetch(url, opts);
+  if (res.status === 401) {
+    // Redirect to login, preserve intended URL.
+    const dest = '/login.html?redirect=' + encodeURIComponent(window.location.pathname + window.location.search);
+    window.location.href = dest;
+    return null;
+  }
+  return res;
+}
+
+// ── Toast ──────────────────────────────────────────────────────────────────
+
+function toast(msg, type = 'info', duration = 4000) {
+  const container = document.getElementById('toastContainer');
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.textContent = msg;
+  container.appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity 0.4s'; setTimeout(() => el.remove(), 400); }, duration);
+}
+
+// ── Quick-filter helper ────────────────────────────────────────────────────
+
+function setQuickFilter(field, value) {
+  // Clear all quick filters first (only one at a time per type).
+  state.sourceIP = '';
+  state.orgName = '';
+  state.sourceName = '';
+  state.sourceBaseDomain = '';
+  state[field] = value;
+  state.forensicPage = 1; state.smtpTlsPage = 1;
+  pushState();
+  syncFilterUI();
+  loadSection(state.activeSection);
+}
+
+// ── URL state (filter persistence) ────────────────────────────────────────
+
+function defaultFrom() {
+  const d = new Date();
+  d.setDate(d.getDate() - 7);
+  return d.toISOString().slice(0, 10);
+}
+
+function readFiltersFromURL() {
+  const params = new URLSearchParams(window.location.search);
+  state.from        = params.get('from')        || defaultFrom();
+  state.to          = params.get('to')          || '';
+  state.domain      = params.get('domain')      || '';
+  state.dmarcFilter = params.get('dmarc')       || '';
+  state.disposition = params.get('disposition') || '';
+  state.activeSection = params.get('section')   || 'dashboard';
+  state.granularity   = params.get('granularity') || 'day';
+  state.forensicPage  = parseInt(params.get('fp') || '1', 10);
+  state.smtpTlsPage   = parseInt(params.get('tp') || '1', 10);
+  state.logPage       = parseInt(params.get('lp') || '1', 10);
+  state.sourceIP        = params.get('source_ip')          || '';
+  state.orgName         = params.get('org_name')           || '';
+  state.sourceName      = params.get('source_name')        || '';
+  state.sourceBaseDomain = params.get('source_base_domain') || '';
+}
+
+function pushState() {
+  const params = new URLSearchParams();
+  if (state.from)        params.set('from',        state.from);
+  if (state.to)          params.set('to',          state.to);
+  if (state.domain)      params.set('domain',      state.domain);
+  if (state.dmarcFilter) params.set('dmarc',       state.dmarcFilter);
+  if (state.disposition) params.set('disposition', state.disposition);
+  if (state.activeSection !== 'dashboard') params.set('section', state.activeSection);
+  if (state.granularity !== 'day')         params.set('granularity', state.granularity);
+  if (state.forensicPage > 1)  params.set('fp', state.forensicPage);
+  if (state.smtpTlsPage > 1)   params.set('tp', state.smtpTlsPage);
+  if (state.logPage > 1)       params.set('lp', state.logPage);
+  if (state.sourceIP)          params.set('source_ip',          state.sourceIP);
+  if (state.orgName)           params.set('org_name',           state.orgName);
+  if (state.sourceName)        params.set('source_name',        state.sourceName);
+  if (state.sourceBaseDomain)  params.set('source_base_domain', state.sourceBaseDomain);
+
+  const qs = params.toString();
+  history.pushState({}, '', qs ? '?' + qs : window.location.pathname);
+}
+
+// ── Filter bar sync ────────────────────────────────────────────────────────
+
+function syncFilterUI() {
+  document.getElementById('filterFrom').value = state.from;
+  document.getElementById('filterTo').value   = state.to;
+  document.getElementById('filterDomain').value = state.domain;
+  document.getElementById('filterDisposition').value = state.disposition;
+  document.getElementById('granularitySelect').value = state.granularity;
+
+  const btnPass = document.getElementById('toggleDmarcPass');
+  const btnFail = document.getElementById('toggleDmarcFail');
+  btnPass.className = 'toggle-btn' + (state.dmarcFilter === 'pass' ? ' active-pass' : '');
+  btnFail.className = 'toggle-btn' + (state.dmarcFilter === 'fail' ? ' active-fail' : '');
+
+  renderChips();
+  adjustMainTop();
+}
+
+function renderChips() {
+  const container = document.getElementById('quickFilterChips');
+  container.innerHTML = '';
+  const chips = [
+    { field: 'sourceIP',         label: 'Source: ' + state.sourceIP },
+    { field: 'orgName',          label: 'Reporter: ' + state.orgName },
+    { field: 'sourceName',       label: 'Sender: ' + state.sourceName },
+    { field: 'sourceBaseDomain', label: 'Sender domain: ' + state.sourceBaseDomain },
+  ];
+  chips.forEach(({ field, label }) => {
+    if (!state[field]) return;
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.innerHTML = esc(label) + '<button class="chip-x" title="Remove filter">&times;</button>';
+    chip.querySelector('.chip-x').addEventListener('click', () => {
+      state[field] = '';
+      state.forensicPage = 1; state.smtpTlsPage = 1;
+      pushState();
+      renderChips();
+      adjustMainTop();
+      loadSection(state.activeSection);
+    });
+    container.appendChild(chip);
+  });
+}
+
+function adjustMainTop() {
+  const h = document.getElementById('filterBar').offsetHeight;
+  document.documentElement.style.setProperty('--filter-h', h + 'px');
+}
+
+function readFilterUI() {
+  state.from        = document.getElementById('filterFrom').value;
+  state.to          = document.getElementById('filterTo').value;
+  state.domain      = document.getElementById('filterDomain').value;
+  state.disposition = document.getElementById('filterDisposition').value;
+  state.granularity = document.getElementById('granularitySelect').value;
+}
+
+function filterParams() {
+  const p = new URLSearchParams();
+  if (state.from)             p.set('from',              state.from);
+  if (state.to)               p.set('to',                state.to);
+  if (state.domain)           p.set('domain',            state.domain);
+  if (state.disposition)      p.set('disposition',       state.disposition);
+  if (state.sourceIP)         p.set('source_ip',         state.sourceIP);
+  if (state.orgName)          p.set('org_name',          state.orgName);
+  if (state.sourceName)       p.set('source_name',       state.sourceName);
+  if (state.sourceBaseDomain) p.set('source_base_domain', state.sourceBaseDomain);
+  return p;
+}
+
+// ── Section navigation ─────────────────────────────────────────────────────
+
+function showSection(name) {
+  state.activeSection = name;
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-link').forEach(n => n.classList.remove('active'));
+
+  const sec = document.getElementById('section-' + name);
+  if (sec) sec.classList.add('active');
+
+  document.querySelectorAll('.nav-link[data-section="' + name + '"]').forEach(n => n.classList.add('active'));
+
+  // Hide filter bar for non-dashboard sections, but keep it accessible.
+  // We keep it visible always so the user can filter forensic/TLS too.
+
+  pushState();
+  loadSection(name);
+}
+
+function loadSection(name) {
+  switch (name) {
+    case 'dashboard':
+      loadDashboard();
+      break;
+    case 'forensic':
+      loadForensic();
+      break;
+    case 'smtp-tls':
+      loadSmtpTls();
+      break;
+    case 'log':
+      loadLog();
+      break;
+    // upload is purely interactive, no initial load needed
+  }
+}
+
+// ── Dashboard ──────────────────────────────────────────────────────────────
+
+async function loadDashboard() {
+  loadSummary();
+  loadTimeline();
+  loadTopSources();
+  loadOrgs();
+  loadCountries();
+  loadSenders();
+}
+
+async function loadSummary() {
+  const p = filterParams();
+  const res = await apiFetch(API.summary + '?' + p.toString());
+  if (!res || !res.ok) return;
+  const data = await res.json();
+
+  const total = data.total_messages || 0;
+  const passed = data.dmarc_passed || 0;
+  const spf = data.spf_aligned || 0;
+  const dkim = data.dkim_aligned || 0;
+
+  const pct = v => total > 0 ? ((v / total) * 100).toFixed(1) + '%' : '-';
+
+  document.getElementById('stat-total').textContent = fmtNum(total);
+
+  const dmarcRate = document.getElementById('stat-dmarc-rate');
+  dmarcRate.textContent = pct(passed);
+  const dmarcPct = total > 0 ? (passed / total) * 100 : 0;
+  dmarcRate.className = 'value ' + rateClass(dmarcPct);
+
+  document.getElementById('stat-dmarc-abs').textContent = fmtNum(passed) + ' passed';
+
+  const spfRate = document.getElementById('stat-spf-rate');
+  spfRate.textContent = pct(spf);
+  const spfPct = total > 0 ? (spf / total) * 100 : 0;
+  spfRate.className = 'value ' + rateClass(spfPct);
+  document.getElementById('stat-spf-abs').textContent = fmtNum(spf) + ' messages';
+
+  const dkimRate = document.getElementById('stat-dkim-rate');
+  dkimRate.textContent = pct(dkim);
+  const dkimPct = total > 0 ? (dkim / total) * 100 : 0;
+  dkimRate.className = 'value ' + rateClass(dkimPct);
+  document.getElementById('stat-dkim-abs').textContent = fmtNum(dkim) + ' messages';
+
+  // Update doughnut charts.
+  const failed = data.dmarc_failed || 0;
+  const spfFailed = total - spf;
+  const dkimFailed = total - dkim;
+
+  renderDoughnut('chartDmarc', chartDmarc, ['Pass', 'Fail'],
+    [passed, failed], ['#00b894', '#d63031'], chart => { chartDmarc = chart; });
+
+  renderDoughnut('chartSpf', chartSpf, ['Aligned', 'Not aligned'],
+    [spf, spfFailed], ['#4a9eff', '#d63031'], chart => { chartSpf = chart; });
+
+  renderDoughnut('chartDkim', chartDkim, ['Aligned', 'Not aligned'],
+    [dkim, dkimFailed], ['#fdcb6e', '#d63031'], chart => { chartDkim = chart; });
+}
+
+function rateClass(pct) {
+  if (pct >= 90) return 'success';
+  if (pct >= 70) return 'blue';
+  return 'danger';
+}
+
+function renderDoughnut(canvasId, existing, labels, data, colors, setter) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+
+  if (existing) {
+    existing.data.datasets[0].data = data;
+    existing.update();
+    return;
+  }
+
+  const chart = new Chart(canvas, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{
+        data,
+        backgroundColor: colors,
+        borderColor: '#16213e',
+        borderWidth: 3,
+        hoverOffset: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '68%',
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            color: '#8892a4',
+            font: { size: 12 },
+            padding: 12,
+            boxWidth: 12,
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+              const pct = total > 0 ? ((ctx.parsed / total) * 100).toFixed(1) : '0';
+              return ` ${ctx.label}: ${fmtNum(ctx.parsed)} (${pct}%)`;
+            }
+          }
+        }
+      }
+    }
+  });
+  setter(chart);
+}
+
+async function loadTimeline() {
+  const p = filterParams();
+  p.set('granularity', state.granularity);
+
+  const res = await apiFetch(API.timeline + '?' + p.toString());
+  if (!res || !res.ok) return;
+  const data = await res.json();
+  if (!Array.isArray(data)) return;
+
+  const labels = data.map(b => b.date);
+  const total  = data.map(b => b.total_messages);
+  const passed = data.map(b => b.dmarc_passed);
+  const spf    = data.map(b => b.spf_aligned);
+  const dkim   = data.map(b => b.dkim_aligned);
+
+  const canvas = document.getElementById('chartTimeline');
+  if (!canvas) return;
+
+  if (chartTimeline) {
+    chartTimeline.data.labels = labels;
+    chartTimeline.data.datasets[0].data = total;
+    chartTimeline.data.datasets[1].data = passed;
+    chartTimeline.data.datasets[2].data = spf;
+    chartTimeline.data.datasets[3].data = dkim;
+    chartTimeline.update();
+    return;
+  }
+
+  chartTimeline = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Total',        data: total,  borderColor: '#4a9eff', backgroundColor: 'rgba(74,158,255,0.1)', fill: true,  tension: 0.3, pointRadius: 3 },
+        { label: 'DMARC Pass',   data: passed, borderColor: '#00b894', backgroundColor: 'transparent',          fill: false, tension: 0.3, pointRadius: 3 },
+        { label: 'SPF Aligned',  data: spf,    borderColor: '#fdcb6e', backgroundColor: 'transparent',          fill: false, tension: 0.3, pointRadius: 3 },
+        { label: 'DKIM Aligned', data: dkim,   borderColor: '#e17055', backgroundColor: 'transparent',          fill: false, tension: 0.3, pointRadius: 3 },
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { intersect: false, mode: 'index' },
+      plugins: {
+        legend: {
+          labels: { color: '#8892a4', font: { size: 12 }, padding: 16, boxWidth: 16 }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#8892a4', maxTicksLimit: 12 },
+          grid:  { color: 'rgba(42,53,80,0.5)' }
+        },
+        y: {
+          ticks: { color: '#8892a4', precision: 0 },
+          grid:  { color: 'rgba(42,53,80,0.5)' },
+          beginAtZero: true,
+        }
+      }
+    }
+  });
+}
+
+async function loadTopSources() {
+  const p = filterParams();
+  p.set('limit', '25');
+  const res = await apiFetch(API.topSources + '?' + p.toString());
+  if (!res || !res.ok) return;
+  const data = await res.json();
+
+  const tbody = document.getElementById('tbodySources');
+  if (!Array.isArray(data) || data.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No data</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = data.map(s => {
+    const pct = s.total_messages > 0 ? ((s.dmarc_passed / s.total_messages) * 100).toFixed(1) : '0';
+    const fillClass = parseFloat(pct) >= 90 ? '' : parseFloat(pct) >= 70 ? ' mid' : ' low';
+    const ipClick = `onclick="setQuickFilter('sourceIP','${esc(s.source_ip)}')" title="Filter by this IP"`;
+    const senderField = s.source_name ? 'sourceName' : (s.source_base_domain ? 'sourceBaseDomain' : '');
+    const senderVal   = s.source_name || s.source_base_domain || '';
+    const senderClick = senderField ? `onclick="setQuickFilter('${senderField}','${esc(senderVal)}')" title="Filter by this sender" style="cursor:pointer"` : '';
+    return `<tr>
+      <td class="clickable" ${ipClick}><code style="font-size:0.8rem">${esc(s.source_ip)}</code></td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(s.source_reverse_dns)}">${esc(s.source_reverse_dns) || '<span style="color:var(--muted)">-</span>'}</td>
+      <td>${s.source_country ? flagEmoji(s.source_country) + ' ' + esc(s.source_country) : '<span style="color:var(--muted)">-</span>'}</td>
+      <td ${senderClick}>${s.source_name ? esc(s.source_name) + ' ' + typeChip(s.source_type) : '<span style="color:var(--muted)">-</span>'}</td>
+      <td class="text-right">${fmtNum(s.total_messages)}</td>
+      <td class="text-right" style="min-width:80px">
+        <div style="display:flex;align-items:center;gap:6px;justify-content:flex-end">
+          <span>${pct}%</span>
+          <div class="progress-bar" style="width:48px"><div class="progress-fill${fillClass}" style="width:${pct}%"></div></div>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function loadOrgs() {
+  const p = filterParams();
+  const res = await apiFetch(API.orgs + '?' + p.toString());
+  if (!res || !res.ok) return;
+  const data = await res.json();
+
+  const tbody = document.getElementById('tbodyOrgs');
+  if (!Array.isArray(data) || data.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="2" class="empty-state">No data</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = data.map(o => `<tr class="clickable" onclick="setQuickFilter('orgName','${esc(o.org_name)}')" title="Filter by this reporter">
+    <td>${esc(o.org_name)}</td>
+    <td class="text-right">${fmtNum(o.total_messages)}</td>
+  </tr>`).join('');
+}
+
+async function loadCountries() {
+  const p = filterParams();
+  const res = await apiFetch(API.countries + '?' + p.toString());
+  if (!res || !res.ok) return;
+  const data = await res.json();
+
+  const tbody = document.getElementById('tbodyCountries');
+  if (!Array.isArray(data) || data.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="2" class="empty-state">No data</td></tr>';
+    return;
+  }
+
+  const maxCount = data[0].total_messages || 1;
+  tbody.innerHTML = data.slice(0, 20).map(c => {
+    const pct = ((c.total_messages / maxCount) * 100).toFixed(0);
+    return `<tr>
+      <td>${c.country && c.country !== 'unknown' ? flagEmoji(c.country) + ' ' + esc(c.country) : '<span style="color:var(--muted)">Unknown</span>'}</td>
+      <td class="text-right">
+        <div style="display:flex;align-items:center;gap:6px;justify-content:flex-end">
+          <span>${fmtNum(c.total_messages)}</span>
+          <div class="progress-bar" style="width:60px"><div class="progress-fill" style="width:${pct}%"></div></div>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function loadSenders() {
+  const p = filterParams();
+  const res = await apiFetch(API.senders + '?' + p.toString());
+  if (!res || !res.ok) return;
+  const data = await res.json();
+
+  const tbody = document.getElementById('tbodySenders');
+  if (!Array.isArray(data) || data.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No data</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = data.slice(0, 20).map(s => {
+    const pct = s.total_messages > 0 ? ((s.dmarc_passed / s.total_messages) * 100).toFixed(1) : '0';
+    const label = s.source_name || s.source_base_domain || '<span style="color:var(--muted)">Unknown</span>';
+    const field = s.source_name ? 'sourceName' : (s.source_base_domain ? 'sourceBaseDomain' : '');
+    const val   = s.source_name || s.source_base_domain || '';
+    const rowClick = field ? `class="clickable" onclick="setQuickFilter('${field}','${esc(val)}')" title="Filter by this sender"` : '';
+    return `<tr ${rowClick}>
+      <td>${s.source_name ? esc(s.source_name) : label}</td>
+      <td>${typeChip(s.source_type)}</td>
+      <td class="text-right">${fmtNum(s.total_messages)}</td>
+      <td class="text-right">${pct}%</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Forensic ───────────────────────────────────────────────────────────────
+
+async function loadForensic() {
+  const p = filterParams();
+  p.set('page',     state.forensicPage);
+  p.set('per_page', state.perPage);
+
+  const res = await apiFetch(API.forensic + '?' + p.toString());
+  if (!res || !res.ok) return;
+  const data = await res.json();
+
+  const rows  = data.rows  || [];
+  const total = data.total || 0;
+
+  document.getElementById('forensicTotal').textContent = fmtNum(total) + ' records';
+
+  const tbody = document.getElementById('tbodyForensic');
+  if (rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No forensic reports found</td></tr>';
+    renderPagination('forensicPagination', total, state.forensicPage, state.perPage, p => {
+      state.forensicPage = p; pushState(); loadForensic();
+    });
+    return;
+  }
+
+  tbody.innerHTML = rows.map(r => `<tr>
+    <td style="white-space:nowrap;font-size:0.8rem">${esc(r.arrival_date_utc || '-')}</td>
+    <td>${esc(r.reported_domain)}</td>
+    <td><code style="font-size:0.8rem">${esc(r.source_ip || '-')}</code></td>
+    <td>${r.source_country ? flagEmoji(r.source_country) + ' ' + esc(r.source_country) : '-'}</td>
+    <td>${r.delivery_result ? `<span class="badge ${r.delivery_result === 'delivered' ? 'badge-pass' : 'badge-fail'}">${esc(r.delivery_result)}</span>` : '-'}</td>
+    <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.sample_subject || '-')}</td>
+    <td><button class="page-btn" onclick="openForensicDetail(${r.id})" style="padding:3px 10px;font-size:0.8rem">View</button></td>
+  </tr>`).join('');
+
+  renderPagination('forensicPagination', total, state.forensicPage, state.perPage, p => {
+    state.forensicPage = p; pushState(); loadForensic();
+  });
+}
+
+async function openForensicDetail(id) {
+  const res = await apiFetch(API.forensic + '/' + id);
+  if (!res || !res.ok) { toast('Failed to load forensic detail', 'error'); return; }
+  const r = await res.json();
+
+  const body = document.getElementById('modalBody');
+  const row = (label, value) => `<div class="detail-row"><span class="detail-label">${label}</span><span>${value || '-'}</span></div>`;
+
+  let html = `
+    ${row('Report ID', id)}
+    ${row('Domain', esc(r.reported_domain))}
+    ${row('Arrival (UTC)', esc(r.arrival_date_utc))}
+    ${row('Source IP', r.source ? `<code>${esc(r.source.ip_address)}</code>` : '-')}
+    ${row('Country', r.source && r.source.country ? flagEmoji(r.source.country) + ' ' + esc(r.source.country) : '-')}
+    ${row('Reverse DNS', r.source && r.source.reverse_dns ? esc(r.source.reverse_dns) : '-')}
+    ${row('Delivery Result', r.delivery_result ? `<span class="badge ${r.delivery_result === 'delivered' ? 'badge-pass' : 'badge-fail'}">${esc(r.delivery_result)}</span>` : '-')}
+    ${row('Feedback Type', esc(r.feedback_type))}
+    ${row('Auth Failure', Array.isArray(r.auth_failure) ? r.auth_failure.join(', ') : '-')}
+  `;
+
+  if (r.parsed_sample) {
+    const s = r.parsed_sample;
+    html += `
+      <hr style="border-color:var(--border);margin:16px 0">
+      <div style="font-weight:600;margin-bottom:12px;font-size:0.875rem">Email Sample</div>
+      ${row('Subject', s.subject ? esc(s.subject) : '-')}
+      ${row('From', s.from ? esc(s.from.address) : '-')}
+      ${row('Date', esc(s.date))}
+    `;
+    if (s.body) {
+      html += `<div class="email-sample">${esc(s.body.substring(0, 2000))}${s.body.length > 2000 ? '\n… (truncated)' : ''}</div>`;
+    }
+  }
+
+  body.innerHTML = html;
+  document.getElementById('forensicModal').classList.remove('hidden');
+}
+
+// ── SMTP TLS ───────────────────────────────────────────────────────────────
+
+async function loadSmtpTls() {
+  loadSmtpTlsSummary();
+  loadSmtpTlsTable();
+}
+
+async function loadSmtpTlsSummary() {
+  const p = filterParams();
+  const res = await apiFetch(API.smtpTlsSummary + '?' + p.toString());
+  if (!res || !res.ok) return;
+  const data = await res.json();
+
+  document.getElementById('tls-success').textContent = fmtNum(data.total_successful_sessions || 0);
+  document.getElementById('tls-failed').textContent  = fmtNum(data.total_failed_sessions     || 0);
+
+  // Render policy type breakdown.
+  const grid = document.getElementById('tlsSummaryGrid');
+  const existing = grid.querySelectorAll('.dynamic-tls-card');
+  existing.forEach(e => e.remove());
+
+  if (data.by_policy_type) {
+    for (const [type, count] of Object.entries(data.by_policy_type)) {
+      const card = document.createElement('div');
+      card.className = 'summary-card dynamic-tls-card';
+      card.innerHTML = `<div class="label">${esc(type)} Sessions</div><div class="value blue">${fmtNum(count)}</div>`;
+      grid.appendChild(card);
+    }
+  }
+}
+
+async function loadSmtpTlsTable() {
+  const p = filterParams();
+  p.set('page',     state.smtpTlsPage);
+  p.set('per_page', state.perPage);
+
+  const res = await apiFetch(API.smtpTls + '?' + p.toString());
+  if (!res || !res.ok) return;
+  const data = await res.json();
+
+  const rows  = data.rows  || [];
+  const total = data.total || 0;
+
+  const tbody = document.getElementById('tbodySmtpTls');
+  if (rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No SMTP TLS records found</td></tr>';
+    renderPagination('smtpTlsPagination', total, state.smtpTlsPage, state.perPage, p => {
+      state.smtpTlsPage = p; pushState(); loadSmtpTlsTable();
+    });
+    return;
+  }
+
+  tbody.innerHTML = rows.map(r => `<tr>
+    <td>${esc(r.org_name)}</td>
+    <td style="font-size:0.8rem;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.report_id)}</td>
+    <td style="white-space:nowrap;font-size:0.8rem">${esc(r.begin_date ? r.begin_date.substring(0,10) : '-')} – ${esc(r.end_date ? r.end_date.substring(0,10) : '-')}</td>
+    <td>${esc(r.policy_domain)}</td>
+    <td><span class="badge badge-pass">${esc(r.policy_type || '-')}</span></td>
+    <td class="text-right" style="color:var(--success)">${fmtNum(r.successful_session_count)}</td>
+    <td class="text-right" style="color:${r.failed_session_count > 0 ? 'var(--danger)' : 'var(--muted)'}">${fmtNum(r.failed_session_count)}</td>
+  </tr>`).join('');
+
+  renderPagination('smtpTlsPagination', total, state.smtpTlsPage, state.perPage, p => {
+    state.smtpTlsPage = p; pushState(); loadSmtpTlsTable();
+  });
+}
+
+// ── Ingest log ─────────────────────────────────────────────────────────────
+
+async function loadLog() {
+  const p = new URLSearchParams();
+  p.set('page',     state.logPage);
+  p.set('per_page', state.perPage);
+
+  const res = await apiFetch(API.ingestLog + '?' + p.toString());
+  if (!res || !res.ok) return;
+  const data = await res.json();
+
+  const rows  = data.records || [];
+  const total = data.total   || 0;
+
+  document.getElementById('logTotal').textContent = fmtNum(total) + ' entries';
+
+  const tbody = document.getElementById('tbodyLog');
+  if (rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No ingest log entries</td></tr>';
+    renderPagination('logPagination', total, state.logPage, state.perPage, p => {
+      state.logPage = p; pushState(); loadLog();
+    });
+    return;
+  }
+
+  tbody.innerHTML = rows.map(r => {
+    const statusBadge = r.status === 'ok'
+      ? '<span class="badge badge-pass">OK</span>'
+      : r.status === 'duplicate'
+        ? '<span class="badge badge-dup">DUP</span>'
+        : '<span class="badge badge-fail">ERR</span>';
+    return `<tr>
+      <td style="white-space:nowrap;font-size:0.8rem">${esc(r.ingested_at)}</td>
+      <td>${esc(r.source)}</td>
+      <td>${esc(r.report_type || '-')}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0.8rem" title="${esc(r.filename)}">${esc(r.filename || '-')}</td>
+      <td>${statusBadge}</td>
+      <td class="text-right">${r.records_saved}</td>
+      <td class="text-right">${r.duplicates_skipped}</td>
+      <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0.8rem;color:var(--muted)" title="${esc(r.message)}">${esc(r.message || '')}</td>
+    </tr>`;
+  }).join('');
+
+  renderPagination('logPagination', total, state.logPage, state.perPage, p => {
+    state.logPage = p; pushState(); loadLog();
+  });
+}
+
+// ── Upload ─────────────────────────────────────────────────────────────────
+
+async function uploadFile(file) {
+  const fd = new FormData();
+  fd.append('file', file);
+
+  const res = await apiFetch(API.upload, { method: 'POST', body: fd });
+  if (!res) return null;
+
+  const result = await res.json();
+  return { filename: file.name, ok: res.ok, data: result };
+}
+
+function renderUploadResult(result) {
+  const tbody = document.getElementById('tbodyUpload');
+  const card  = document.getElementById('uploadResultsCard');
+  card.style.display = '';
+
+  const r = result.data || {};
+  const status = r.status || (result.ok ? 'ok' : 'error');
+  const statusBadge = status === 'ok'
+    ? '<span class="badge badge-pass">OK</span>'
+    : status === 'duplicate'
+      ? '<span class="badge badge-dup">DUP</span>'
+      : '<span class="badge badge-fail">ERR</span>';
+
+  const row = document.createElement('tr');
+  row.innerHTML = `
+    <td>${esc(result.filename)}</td>
+    <td>${esc(r.type || '-')}</td>
+    <td>${statusBadge}</td>
+    <td class="text-right">${r.records_saved || 0}</td>
+    <td style="color:var(--muted);font-size:0.8rem">${esc(r.message || '')}</td>
+  `;
+  tbody.appendChild(row);
+}
+
+// ── Pagination helper ─────────────────────────────────────────────────────
+
+function renderPagination(containerId, total, currentPage, perPage, onPageChange) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  const totalPages = Math.max(1, Math.ceil(total / perPage));
+  if (totalPages <= 1) { container.innerHTML = ''; return; }
+
+  let html = `<button class="page-btn" ${currentPage <= 1 ? 'disabled' : ''} onclick="(${onPageChange.toString()})(${currentPage - 1})">&larr; Prev</button>`;
+
+  // Show window of pages around current.
+  const window = 2;
+  for (let p = 1; p <= totalPages; p++) {
+    if (p === 1 || p === totalPages || (p >= currentPage - window && p <= currentPage + window)) {
+      html += `<button class="page-btn ${p === currentPage ? 'active' : ''}" onclick="(${onPageChange.toString()})(${p})">${p}</button>`;
+    } else if (p === currentPage - window - 1 || p === currentPage + window + 1) {
+      html += `<span class="page-info">…</span>`;
+    }
+  }
+
+  html += `<button class="page-btn" ${currentPage >= totalPages ? 'disabled' : ''} onclick="(${onPageChange.toString()})(${currentPage + 1})">Next &rarr;</button>`;
+  html += `<span class="page-info">${currentPage} / ${totalPages} (${fmtNum(total)} total)</span>`;
+
+  container.innerHTML = html;
+}
+
+// ── Domain list loader ─────────────────────────────────────────────────────
+
+async function loadDomains() {
+  const res = await apiFetch(API.domains);
+  if (!res || !res.ok) return;
+  const domains = await res.json();
+
+  const select = document.getElementById('filterDomain');
+  const current = select.value;
+  // Clear all except first option.
+  while (select.options.length > 1) select.remove(1);
+
+  if (Array.isArray(domains)) {
+    domains.forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d;
+      opt.textContent = d;
+      if (d === current) opt.selected = true;
+      select.appendChild(opt);
+    });
+  }
+}
+
+// ── Utility helpers ────────────────────────────────────────────────────────
+
+function esc(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function fmtNum(n) {
+  return Number(n).toLocaleString();
+}
+
+function typeChip(type) {
+  if (!type) return '';
+  const cls = { esp: 'type-esp', isp: 'type-isp', cdn: 'type-cdn' }[type] || 'type-other';
+  return `<span class="type-chip ${cls}">${esc(type)}</span>`;
+}
+
+function flagEmoji(countryCode) {
+  if (!countryCode || countryCode.length !== 2) return '';
+  const chars = countryCode.toUpperCase().split('').map(c => 0x1F1E6 + c.charCodeAt(0) - 65);
+  return String.fromCodePoint(...chars);
+}
+
+// ── Event wiring ───────────────────────────────────────────────────────────
+
+function wireEvents() {
+  // Nav links.
+  document.querySelectorAll('.nav-link[data-section]').forEach(btn => {
+    btn.addEventListener('click', () => showSection(btn.dataset.section));
+  });
+
+  // DMARC toggle buttons.
+  document.getElementById('toggleDmarcPass').addEventListener('click', () => {
+    state.dmarcFilter = state.dmarcFilter === 'pass' ? '' : 'pass';
+    syncFilterUI();
+  });
+  document.getElementById('toggleDmarcFail').addEventListener('click', () => {
+    state.dmarcFilter = state.dmarcFilter === 'fail' ? '' : 'fail';
+    syncFilterUI();
+  });
+
+  // Apply / clear filters.
+  document.getElementById('btnApply').addEventListener('click', () => {
+    readFilterUI();
+    state.forensicPage = 1;
+    state.smtpTlsPage  = 1;
+    pushState();
+    loadSection(state.activeSection);
+  });
+
+  document.getElementById('btnClear').addEventListener('click', () => {
+    state.from = defaultFrom(); state.to = ''; state.domain = '';
+    state.dmarcFilter = ''; state.disposition = '';
+    state.sourceIP = ''; state.orgName = ''; state.sourceName = ''; state.sourceBaseDomain = '';
+    syncFilterUI();
+    readFilterUI();
+    pushState();
+    loadSection(state.activeSection);
+  });
+
+  // Granularity.
+  document.getElementById('granularitySelect').addEventListener('change', function() {
+    state.granularity = this.value;
+    pushState();
+    if (chartTimeline) { chartTimeline.destroy(); chartTimeline = null; }
+    loadTimeline();
+  });
+
+  // Modal close.
+  document.getElementById('modalClose').addEventListener('click', () => {
+    document.getElementById('forensicModal').classList.add('hidden');
+  });
+  document.getElementById('forensicModal').addEventListener('click', e => {
+    if (e.target === document.getElementById('forensicModal')) {
+      document.getElementById('forensicModal').classList.add('hidden');
+    }
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') document.getElementById('forensicModal').classList.add('hidden');
+  });
+
+  // Upload drop zone.
+  const dropZone = document.getElementById('dropZone');
+  const fileInput = document.getElementById('fileInput');
+  const btnPick = document.getElementById('btnPickFile');
+
+  btnPick.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', () => handleFiles(Array.from(fileInput.files)));
+
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    handleFiles(Array.from(e.dataTransfer.files));
+  });
+
+  // Browser back/forward.
+  window.addEventListener('popstate', () => {
+    readFiltersFromURL();
+    syncFilterUI();
+    showSection(state.activeSection);
+  });
+
+  window.addEventListener('resize', adjustMainTop);
+}
+
+async function handleFiles(files) {
+  if (!files.length) return;
+  document.getElementById('tbodyUpload').innerHTML = '';
+  document.getElementById('uploadResultsCard').style.display = 'none';
+
+  for (const file of files) {
+    toast(`Uploading ${file.name}…`, 'info', 2000);
+    const result = await uploadFile(file);
+    if (result) {
+      renderUploadResult(result);
+      if (result.ok) {
+        toast(`${file.name}: OK - ${result.data.records_saved || 0} record(s) saved`, 'success');
+      } else {
+        toast(`${file.name}: ${result.data.error || 'upload failed'}`, 'error');
+      }
+    } else {
+      toast(`${file.name}: network error`, 'error');
+    }
+  }
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+
+async function init() {
+  readFiltersFromURL();
+  syncFilterUI();
+  wireEvents();
+
+  // Check auth by hitting health endpoint.
+  const res = await apiFetch(API.health);
+  if (!res) return; // redirected to login
+
+  await loadDomains();
+  // Restore selected domain in dropdown now that options are populated.
+  if (state.domain) {
+    document.getElementById('filterDomain').value = state.domain;
+  }
+
+  showSection(state.activeSection);
+}
+
+init().catch(err => console.error('dmarcer init error:', err));
+</script>
+</body>
+</html>

@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>dmarcer - Login</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #1a1a2e;
+      --card:     #16213e;
+      --accent:   #0f3460;
+      --blue:     #4a9eff;
+      --success:  #00b894;
+      --danger:   #d63031;
+      --text:     #e0e0e0;
+      --muted:    #8892a4;
+      --border:   #2a3550;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    .login-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 48px 40px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    }
+
+    .logo {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .logo h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--blue);
+      letter-spacing: -0.5px;
+    }
+
+    .logo p {
+      color: var(--muted);
+      font-size: 0.875rem;
+      margin-top: 4px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.875rem;
+      color: var(--muted);
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    input[type="password"],
+    input[type="text"] {
+      width: 100%;
+      padding: 12px 16px;
+      background: var(--accent);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="password"]:focus,
+    input[type="text"]:focus {
+      border-color: var(--blue);
+    }
+
+    .btn {
+      width: 100%;
+      padding: 12px;
+      background: var(--blue);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      margin-top: 8px;
+    }
+
+    .btn:hover { opacity: 0.85; }
+    .btn:active { opacity: 0.7; }
+
+    .error-msg {
+      background: rgba(214, 48, 49, 0.15);
+      border: 1px solid var(--danger);
+      border-radius: 8px;
+      padding: 12px 16px;
+      color: var(--danger);
+      font-size: 0.875rem;
+      margin-bottom: 20px;
+      display: none;
+    }
+
+    .error-msg.visible { display: block; }
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <div class="logo">
+      <h1>dmarcer</h1>
+      <p>DMARC report analyser</p>
+    </div>
+
+    <div class="error-msg" id="errorMsg">Invalid API key. Please try again.</div>
+
+    <form id="loginForm">
+      <div class="form-group">
+        <label for="apiKey">API Key</label>
+        <input type="password" id="apiKey" placeholder="Enter your API key" autocomplete="current-password" autofocus>
+      </div>
+      <button type="submit" class="btn">Sign in</button>
+    </form>
+  </div>
+
+  <script>
+    const form = document.getElementById('loginForm');
+    const apiKeyInput = document.getElementById('apiKey');
+    const errorMsg = document.getElementById('errorMsg');
+
+    // Pre-fill if already stored.
+    const stored = sessionStorage.getItem('dmarcer_api_key');
+    if (stored) apiKeyInput.value = stored;
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorMsg.classList.remove('visible');
+
+      const key = apiKeyInput.value.trim();
+      if (!key) {
+        errorMsg.textContent = 'Please enter your API key.';
+        errorMsg.classList.add('visible');
+        return;
+      }
+
+      // Validate by calling the health endpoint.
+      try {
+        const res = await fetch('/api/health', {
+          headers: { 'Authorization': 'Bearer ' + key }
+        });
+
+        if (res.ok) {
+          sessionStorage.setItem('dmarcer_api_key', key);
+          const redirect = new URLSearchParams(window.location.search).get('redirect') || '/';
+          window.location.href = redirect;
+        } else {
+          errorMsg.textContent = 'Invalid API key. Please try again.';
+          errorMsg.classList.add('visible');
+          sessionStorage.removeItem('dmarcer_api_key');
+        }
+      } catch (err) {
+        errorMsg.textContent = 'Connection error: ' + err.message;
+        errorMsg.classList.add('visible');
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+# Binary
+/dmarcer
+/cmd/dmarcer/dmarcer
+/main
+
+# Environment and secrets
+.env
+
+# Database files
+*.db
+*.db-wal
+*.db-shm
+
+# GeoIP (if downloaded separately - but keep the bundled one)
+/*.mmdb
+/assets/*.mmdb.new
+
+# Go build cache
+/vendor/
+
+# Editor / OS
+.DS_Store
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
