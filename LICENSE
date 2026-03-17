@@ -22,6 +22,17 @@ SOFTWARE.
 
 ---
 
+This product includes GeoLite data created by DB-IP, available from
+https://db-ip.com, embedded as:
+
+  assets/dbip-country-lite.mmdb
+    IP geolocation database used for country lookups during report enrichment.
+
+That file is licensed under the Creative Commons Attribution 4.0 International
+License (CC BY 4.0): https://creativecommons.org/licenses/by/4.0/
+
+---
+
 This project is based on parsedmarc (https://github.com/domainaware/parsedmarc)
 by Domain Aware, licensed under the Apache License 2.0.
 
@@ -31,4 +42,9 @@ The following file was taken directly from the parsedmarc project:
     A map of reverse DNS base domains to sender names and types (ESPs, ISPs,
     CDNs). Used for sender identification during report enrichment.
 
-The parsedmarc project copyright and license terms apply to that file.
+That file is subject to the Apache License 2.0 under which parsedmarc is
+distributed. The Apache License 2.0 applies to that file only; all other
+files in this repository are MIT licensed as stated above.
+
+A copy of the Apache License 2.0 is available at:
+https://www.apache.org/licenses/LICENSE-2.0
