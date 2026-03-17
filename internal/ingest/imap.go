@@ -146,9 +146,16 @@ func (i *IMAPIngester) watchLoop(ctx context.Context, client *imapClient, idleTi
 			return ctx.Err()
 		}
 
-		// Always process any waiting messages before entering IDLE.
-		if _, err := i.processBatch(ctx, client); err != nil {
-			return fmt.Errorf("processBatch: %w", err)
+		// Drain all waiting messages before entering IDLE.
+		for {
+			n, err := i.processBatch(ctx, client)
+			if err != nil {
+				return fmt.Errorf("processBatch: %w", err)
+			}
+
+			if n == 0 {
+				break
+			}
 		}
 
 		idleCmd, err := client.Idle()
